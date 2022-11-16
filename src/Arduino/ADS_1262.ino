@@ -43,15 +43,15 @@
 #include <math.h>
 #include <ads1262.h>
 
-#define PGA 1                     // Programmable Gain = 1
-#define VREF 2.50                 // Internal reference of 2.5V
-#define VFSR VREF/PGA             
-#define FSR (((long int)1<<23)-1)  
+// #define PGA 1 // Programmable Gain = 1
+#define VREF 2.50 // Internal reference of 2.5V
+// #define VFSR 2*VREF/PGA // full-scale range   
+#define TOTAL_GAIN 10 // (0.1 V/A)(100V/V)(1V/V) = (Res)(Amp)(PGA)    
+#define LED_PIN 2
 
 ads1262 PC_ADS1262;                     // class
 
 float volt_V=0;
-float volt_mV=0;
 volatile int i;
 volatile char SPI_RX_Buff[10];
 volatile long ads1262_rx_Data[10];
@@ -60,64 +60,72 @@ volatile char *SPI_RX_Buff_Ptr;
 volatile int Responsebyte = false;
 volatile signed long sads1262Count = 0;
 volatile signed long uads1262Count=0;
-double resolution;
+double resolution = (double)((double)VREF/pow(2,31)); //resolution= Vref/(2^n-1) , Vref=2.5, n=no of bits
+float averageVal; // to calibrate
 
+// Leave power channel unconnected on startup and wait until LED turns on to 
+// indicate calibration has completed
 void setup() 
 {
-  // initalize the  data ready and chip select pins:
-  pinMode(ADS1262_DRDY_PIN, INPUT);                  //data ready input line
-  pinMode(ADS1262_CS_PIN, OUTPUT);                   //chip enable output line
-  pinMode(ADS1262_START_PIN, OUTPUT);               // start 
-  pinMode(ADS1262_PWDN_PIN, OUTPUT);                // Power down output   
+  // initalize the ADC
+  pinMode(ADS1262_DRDY_PIN, INPUT); //data ready input line
+  pinMode(ADS1262_CS_PIN, OUTPUT); //chip enable output line
+  pinMode(ADS1262_START_PIN, OUTPUT); // start 
+  pinMode(ADS1262_PWDN_PIN, OUTPUT); // Power down output   
+  pinMode(LED_PIN, OUTPUT);
 
   Serial.begin(9600);
-  PC_ADS1262.ads1262_Init();                      // initialise ads1262
-  Serial.println("ads1262 Initialised successfully....");
+  PC_ADS1262.ads1262_Init(); // initialise ads1262
+
+  averageVal = calcAverage(); // calibrate
+  digitalWrite(LED_PIN, HIGH); // LED on after calibration
 }
 
 void loop() 
 {
-  volatile int i,data;
+  Serial.print("Sample [uA]: ");
+  Serial.println((receive32BitSample() - averageVal)*1000000.0/TOTAL_GAIN);
+}
 
-  if((digitalRead(ADS1262_DRDY_PIN)) == LOW)               // monitor Data ready(DRDY pin)
-  {  
+float receive32BitSample() {
+  if((digitalRead(ADS1262_DRDY_PIN)) == LOW) {               // monitor Data ready(DRDY pin)
     SPI_RX_Buff_Ptr = PC_ADS1262.ads1262_Read_Data();      // read 6 bytes conversion register
     Responsebyte = true ; 
   }
 
-  if(Responsebyte == true)
-  {
-    for(i = 0; i <5; i++)
-    {
+  if(Responsebyte == true) {
+    for(int i = 0; i < 5; i++) {
       SPI_RX_Buff[SPI_RX_Buff_Count++] = *(SPI_RX_Buff_Ptr + i);              
     }
     Responsebyte = false;
   }
   
-  if(SPI_RX_Buff_Count >= 5)
-  {     
-    ads1262_rx_Data[0]= (unsigned char)SPI_RX_Buff[1];  // read 4 bytes adc count
-    ads1262_rx_Data[1]= (unsigned char)SPI_RX_Buff[2];
-    ads1262_rx_Data[2]= (unsigned char)SPI_RX_Buff[3];
-    ads1262_rx_Data[3]= (unsigned char)SPI_RX_Buff[4];
+  if(SPI_RX_Buff_Count >= 5) {
+    ads1262_rx_Data[0] = (unsigned char)SPI_RX_Buff[1];  // read 4 bytes adc count
+    ads1262_rx_Data[1] = (unsigned char)SPI_RX_Buff[2];
+    ads1262_rx_Data[2] = (unsigned char)SPI_RX_Buff[3];
+    ads1262_rx_Data[3] = (unsigned char)SPI_RX_Buff[4];
  
     uads1262Count = (signed long) (((unsigned long)ads1262_rx_Data[0]<<24)|((unsigned long)ads1262_rx_Data[1]<<16)|(ads1262_rx_Data[2]<<8)|ads1262_rx_Data[3]);//get the raw 32-bit adc count out by shifting
     sads1262Count = (signed long) (uads1262Count);      // get signed value
-    resolution = (double)((double)VREF/pow(2,31));       //resolution= Vref/(2^n-1) , Vref=2.5, n=no of bits
-    volt_V      = (resolution)*(float)sads1262Count;     // voltage = resolution * adc count
-    volt_mV   =   volt_V*1000;                           // voltage in mV
-    Serial.print("Readout voltage");
-    Serial.print(" : ");
-    Serial.print(volt_V);
-    Serial.print(" V ,");
-    Serial.print(volt_mV);
-    Serial.println(" mV");
+    volt_V = (resolution)*(float)sads1262Count;     // voltage = resolution * adc count
    }
     
   SPI_RX_Buff_Count = 0;
+  return volt_V;
 }
 
-float mapfloat(float x, float in_min, float in_max, float out_min, float out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+// take 1000 samples and find the average for calibration
+float calcAverage() {
+  float avg = 0;
+  // discard first 1000 samples
+  for (int i = 0; i < 1000; i++) {
+    receive32BitSample();
+  }
+
+  // use next 10000 samples for averaging
+  for (int i = 0; i < 1000; i++) {
+    avg += receive32BitSample();
+  }
+  return avg / 1000;
 }

@@ -45,7 +45,7 @@
 #define TOTAL_GAIN 10 // (0.1 V/A)(100V/V)(1V/V) = (Res)(Amp)(PGA)    
 #define LED_PIN 2
 
-ads1262 PC_ADS1262;                     // class
+ads1262 PC_ADS1262; 
 
 float volt_V=0;
 volatile int i;
@@ -81,8 +81,8 @@ void loop()
   // new sample when DRDY low
   if((digitalRead(ADS1262_DRDY_PIN)) == LOW) {
     sample = (receive32BitSample() - averageVal)*1000000.0/TOTAL_GAIN; // convert to uA and divide by gain
-    Serial.print("Current [uA]: ");
-    Serial.println(sample);
+    Serial.print(sample);
+    Serial.println(" uA");
   }
 }
 

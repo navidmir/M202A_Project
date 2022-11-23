@@ -1,13 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////
-//    Demo code for the protocentral-ads1262 sensor breakout board
+//    Adapted from demo code for the protocentral-ads1262 sensor breakout board
 //
 //    Copyright (c) 2013 ProtoCentral
 //
-//    This example measures raw capacitance across CHANNEL0 and Gnd and
-//    prints on serial terminal
-//    
-//    this example gives differential voltage across the AN0 And AN1 in mV
-//    Hooking-up with the Arduino
+//    Measures difference in AIN1 and AINCOM
 //    
 //    |ads1262 pin label| Pin Function         |Arduino Connection|
 //    |-----------------|:--------------------:|-----------------:|
@@ -55,13 +51,12 @@ float volt_V=0;
 volatile int i;
 volatile char SPI_RX_Buff[10];
 volatile long ads1262_rx_Data[10];
-volatile static int SPI_RX_Buff_Count = 0;
 volatile char *SPI_RX_Buff_Ptr;
-volatile int Responsebyte = false;
 volatile signed long sads1262Count = 0;
 volatile signed long uads1262Count=0;
 double resolution = (double)((double)VREF/pow(2,31)); //resolution= Vref/(2^n-1) , Vref=2.5, n=no of bits
 float averageVal; // to calibrate
+float sample; // holds the sample
 
 // Leave power channel unconnected on startup and wait until LED turns on to 
 // indicate calibration has completed
@@ -83,49 +78,48 @@ void setup()
 
 void loop() 
 {
-  Serial.print("Sample [uA]: ");
-  Serial.println((receive32BitSample() - averageVal)*1000000.0/TOTAL_GAIN);
+  // new sample when DRDY low
+  if((digitalRead(ADS1262_DRDY_PIN)) == LOW) {
+    sample = (receive32BitSample() - averageVal)*1000000.0/TOTAL_GAIN; // convert to uA and divide by gain
+    Serial.print("Current [uA]: ");
+    Serial.println(sample);
+  }
 }
 
-float receive32BitSample() {
-  if((digitalRead(ADS1262_DRDY_PIN)) == LOW) {               // monitor Data ready(DRDY pin)
-    SPI_RX_Buff_Ptr = PC_ADS1262.ads1262_Read_Data();      // read 6 bytes conversion register
-    Responsebyte = true ; 
-  }
+// call when DRDY low
+float receive32BitSample() {  
+  SPI_RX_Buff_Ptr = PC_ADS1262.ads1262_Read_Data(); // read 6 bytes conversion register
 
-  if(Responsebyte == true) {
-    for(int i = 0; i < 5; i++) {
-      SPI_RX_Buff[SPI_RX_Buff_Count++] = *(SPI_RX_Buff_Ptr + i);              
-    }
-    Responsebyte = false;
+  for(int i = 0; i < 5; i++) {
+    SPI_RX_Buff[i] = *(SPI_RX_Buff_Ptr + i);              
   }
   
-  if(SPI_RX_Buff_Count >= 5) {
-    ads1262_rx_Data[0] = (unsigned char)SPI_RX_Buff[1];  // read 4 bytes adc count
-    ads1262_rx_Data[1] = (unsigned char)SPI_RX_Buff[2];
-    ads1262_rx_Data[2] = (unsigned char)SPI_RX_Buff[3];
-    ads1262_rx_Data[3] = (unsigned char)SPI_RX_Buff[4];
- 
-    uads1262Count = (signed long) (((unsigned long)ads1262_rx_Data[0]<<24)|((unsigned long)ads1262_rx_Data[1]<<16)|(ads1262_rx_Data[2]<<8)|ads1262_rx_Data[3]);//get the raw 32-bit adc count out by shifting
-    sads1262Count = (signed long) (uads1262Count);      // get signed value
-    volt_V = (resolution)*(float)sads1262Count;     // voltage = resolution * adc count
-   }
+  ads1262_rx_Data[0] = (unsigned char)SPI_RX_Buff[1];  // first byte is status
+  ads1262_rx_Data[1] = (unsigned char)SPI_RX_Buff[2];
+  ads1262_rx_Data[2] = (unsigned char)SPI_RX_Buff[3];
+  ads1262_rx_Data[3] = (unsigned char)SPI_RX_Buff[4];
+
+  uads1262Count = (signed long) (((unsigned long)ads1262_rx_Data[0]<<24)|((unsigned long)ads1262_rx_Data[1]<<16)|(ads1262_rx_Data[2]<<8)|ads1262_rx_Data[3]);//get the raw 32-bit adc count out by shifting
+  sads1262Count = (signed long) (uads1262Count); // get signed value
+  volt_V = (resolution)*(float)sads1262Count; // voltage = resolution * adc count
     
-  SPI_RX_Buff_Count = 0;
   return volt_V;
 }
 
-// take 1000 samples and find the average for calibration
+// take 10 samples and find the average for calibration
 float calcAverage() {
   float avg = 0;
-  // discard first 1000 samples
-  for (int i = 0; i < 1000; i++) {
-    receive32BitSample();
+  // discard first 100 samples
+  for (int i = 0; i < 100; i++) {
+    while (digitalRead(ADS1262_DRDY_PIN)); // wait for DRDY to go low
+    receive32BitSample(); // get sample
   }
 
-  // use next 10000 samples for averaging
-  for (int i = 0; i < 1000; i++) {
-    avg += receive32BitSample();
+  int N = 100;
+  // use next N samples for averaging
+  for (int i = 0; i < N; i++) {
+    while (digitalRead(ADS1262_DRDY_PIN)); // wait for DRDY to go low
+    avg += receive32BitSample(); // get sample and add
   }
-  return avg / 1000;
+  return avg / N;
 }

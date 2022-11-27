@@ -4,15 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
  
- // FFT code: https://rosettacode.org/wiki/Fast_Fourier_transform#C++
+ // FFT code: https://rosettacode.org/wiki/Fast_Fourier_transform#C
 
 #include <zephyr/kernel.h>
 #include <stdio.h>
 #include <math.h>
 #include <complex.h>
+#include <zephyr/timing/timing.h>
  
-double PI;
-typedef double complex cplx;
+float PI;
+typedef float complex cplx;
  
 void _fft(cplx buf[], cplx out[], int n, int step)
 {
@@ -38,11 +39,25 @@ void fft(cplx buf[], int n)
 
 void main(void)
 {
+	PI = atan2(1, 1) * 4;
+	
+	timing_t start_time, end_time;
+	uint32_t total_ns;
+
+	timing_init();
+	timing_start();
+
 	// infinite loop our computations
 	while (1) {
-		// PI = atan2(1, 1) * 4;
-		// cplx buf[] = {0, 1, 0, 1, 0, 0, 0, 1};
-		// fft(buf, 512); // 512-pt FFT
+		start_time = timing_counter_get();
+		// time 100 runs
+		for (int i = 0; i < 100; i++) {
+			cplx buf[] = {0,0,1,1,0,1,0,0,0,1,1,1,0,0,0,0}; 
+			fft(buf, 16); 
+		}
+		end_time = timing_counter_get();
+    		total_ns = timing_cycles_to_ns(timing_cycles_get(&start_time, &end_time));
+		printk("%d ns\n", (int)total_ns);
 	}
 }
 

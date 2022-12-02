@@ -41,6 +41,7 @@ void main(void)
 {
 	PI = atan2(1, 1) * 4;
 	
+	// for timing
 	timing_t start_time, end_time;
 	uint32_t total_ns;
 

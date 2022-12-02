@@ -1,0 +1,6 @@
+source ~/zephyrproject/.venv/bin/activate
+cd ~/zephyrproject
+west update
+cd zephyr/
+west build -p -b esp32c3_devkitm m202a/fir_filter
+west flash

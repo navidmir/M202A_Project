@@ -1,0 +1,8 @@
+source ~/zephyrproject/.venv/bin/activate
+cd ~/zephyrproject
+west update
+cd zephyr/
+west build -p -b rpi_pico samples/basic/blinky
+cp ~/zephyrproject/zephyr/build/zephyr/zephyr.uf2 /media/navid/RPI-RP2/
+
+

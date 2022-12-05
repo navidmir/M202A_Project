@@ -106,7 +106,7 @@ float receive32BitSample() {
   return volt_V;
 }
 
-// take 10 samples and find the average for calibration
+// find the average for calibration  
 float calcAverage() {
   float avg = 0;
   // discard first 100 samples

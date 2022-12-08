@@ -8,7 +8,7 @@ This project consists of two aspects:
 
 2) ZephyrOS-based computation tests
 
-Our goal is to characterize power performance of ZephyrOS based computational tasks on three different boards with different architectures. The boards are the Arduino Nano 33 BLE Sense (ARM M4), ESP32C3 (RISCV), and Raspberry Pi Pico (ARM M0+).
+Our goal is to characterize power performance of ZephyrOS based computational tasks on three different boards with different architectures. The boards are the Arduino Nano 33 BLE Sense (ARM M4), ESP32C3 (RISCV), and Raspberry Pi Pico (ARM M0+). To achieve this, we sought to create our own custom power monitoring board that can measure currents from 100’s of nA to 100’s of mA.
 
 Custom Power Measuring Platform
 
@@ -18,13 +18,13 @@ The custom hardware platform uses a current sense resistor in series with the US
 
 Fig. 1. Hardware Schematic
 
-In order to minimize thermal noise, traces are kept short and resistances are kept small. The purpose of R2 is to provide a DC path to ground for the input of the amplifier [1]. R3 and C3 provide a low pass filter to reduce aliasing to the ADC, but the ADC has a built-in filter bank [2]. In our case, it is configured as an FIR filter.
+To minimize thermal noise, traces are kept short, and resistances are kept small. The purpose of R2 is to provide a DC path to ground for the input of the amplifier [1]. R3 and C3 provide a low pass filter to reduce aliasing to the ADC, but the ADC has a built-in filter bank [2]. In our case, it is configured as an FIR filter.
 
-Initial problems with the board were that the amplifier was configured with single-ended supply. A charge pump was added to produce a second negative supply. Analog functionality was verified with an LTSpice simulation with the schematic shown in Fig. 2. The complete board CAD model is shown in Fig. 3 and an image of it is shown in Fig. 4.
+Initial problems with the board were that the amplifier was configured with single-ended supply. A charge pump was added to produce a second negative supply. Analog functionality was verified with an LTspice simulation with the schematic shown in Fig. 2. The complete board CAD model is shown in Fig. 3 and an image of it is shown in Fig. 4.
 
 ![Diagram, schematic Description automatically generated](media/897ec0630073300f43d416eb41e7bb63.png)
 
-Fig. 2 LTSpice Simulation Schematic
+Fig. 2 LTspice Simulation Schematic
 
 ![A screenshot of a computer Description automatically generated with low confidence](media/f0541e3bd3a085f9fb9e8001a0d82932.png)
 
@@ -34,15 +34,15 @@ Fig. 3 Complete Board CAD
 
 Fig. 4 Complete Board
 
-The LTSpice schematic files is found in hardware/LTSpice and the Altium design files for the board are in hardware/Altium.
+The LTspice schematic files is found in hardware/LTSpice and the Altium design files for the board are in hardware/Altium.
 
 The next order of business is to write the Arduino code that reads the ADC samples and does the offset calculation. The base of the code is from [3], but this code had many issues that had to be rectified. The driver given is modified so that the proper channel is used, along with 20SPS sampling and an FIR filter. According to [2], this would give an effective number of bits of 24.6. At a reference voltage of 2.5V, this would mean the ADC resolution would be
 
 The voltage that the ADC measures corresponds to the voltage produced after the current passes through the resistor and then amplified by the instrumentation amplifier:
 
-Thus the voltage measured corresponds to ten times the current, and the minimum current we can resolve is .
+Thus, the voltage measured corresponds to ten times the current, and the minimum current we can resolve is .
 
-The calibration steps start upon startup of the Arduino code, and start with discarding the first 100 samples to reach steady state, and then using the next 100 samples to find an average value to subtract off. Upon doing so, the measurements have a mean of and a variance of . There is some error in the no load measurements, and these can come from a variety of source. These include power supply noise, thermal noise, and the resistive losses in the cables and wires used. The USB cable used to connect the device under test is particularly long.
+The calibration steps start upon startup of the Arduino code and start with discarding the first 100 samples to reach steady state, and then using the next 100 samples to find an average value to subtract off. Upon doing so, the measurements have a mean of and a variance of . There is some error in the no load measurements, and these can come from a variety of sources. These include power supply noise, thermal noise, and the resistive losses in the cables and wires used. The USB cable used to connect the device under test is particularly long.
 
 The samples are written to the serial port, which are then read with PuTTy and written into a file where they are then pasted into excel to find the average. The Arduino code is in src/Arduino.
 
@@ -50,7 +50,7 @@ For the current measurements, 250 samples are averaged.
 
 ZephyrOs-based Computation Tests
 
-There are several tests that are used to test the power consumption.
+There are several tests that are used to test power consumption.
 
 1.  FIR (10 tap, 64 pts)
 2.  FFT (32 pt)
@@ -59,11 +59,11 @@ There are several tests that are used to test the power consumption.
 5.  TFlite Sine Estimation Model
 6.  BLE Broadcast (For BLE devices)
 
-The first two tests are written using code from online libraries [4, 5]. The rest of the tests are modified versions of example code found in the zephyrproject directory (zephyrproject/zephyr/samples/). The last test (broadcast) only applies to the BLE and ESP since they have radios.
+The first two tests are written using code from online libraries [4, 5]. The rest of the tests are modified versions of example code found in the zephyrproject/ directory (zephyrproject/zephyr/samples/). The last test (broadcast) only applies to the BLE and ESP since they have radios.
 
 Except for the broadcast test, the tests are further modified to find execution timing of the code (using a Zephyr library). 100 runs of the code that is running in a loop for the power test are timed and printed to the serial port. 5 of these for a total of 500 runs are averaged together to find an execution time per run. For the BLE and Pico, additional configuration is needed to print to the serial port. The Zephyr applications are found in src/Zephyr. There are two flavors, one is src/Zephyr/power and one is src/Zephyr/timing/nano_pi and src/Zephyr/timing/esp.
 
-The measurement data can be found in our Google drive.
+The measurement data can be found in our Google drive <https://drive.google.com/drive/folders/1zpd2A9vdD_L1s2i-tXj2ZQ2Z_FPMoxEz?usp=share_link>.
 
 Building and Flashing
 
@@ -194,7 +194,13 @@ Fig. 8 First Revision of Board Without Dual Supplies
 
 We faced an uphill task deploying the OS to different boards. Zephyr was difficult to deploy on Windows. In addition, Zephyr does not support all features on the boards or have all the APIs necessary for every function, for example multi-core or Cryptographic accelerators.
 
-Bossa has a version issue on Windows 7 and later. OpenOCD was difficult to use, so we could not do our usual “west flash” command. Instead we have to drop the zephyr.uf2 build file into the Pico which looks like a USB Flash Drive when the board is booted.
+Bossa has a version issue on Windows 7 and later. OpenOCD was difficult to use, so we could not do our usual “west flash” command. Instead, we have to drop the zephyr.uf2 build file into the Pico which looks like a USB Flash Drive when the board is booted.
+
+Future Work
+
+Additional work into our research could include upgrading our board to use the Arduino’s 5V power supply to power the analog circuitry. Also, we could use a standalone ADC and not a breakout board. It would also be helpful to know what sampling rates we can achieve while not sacrificing performance. We could also confirm the upper limit of our platform’s measuring capabilities as this was never reached in the tests that we did.
+
+In terms of software, we could experiment with additional tests. Also, it would be good to redo the SHA-256 test with the cryptographic accelerators, which we would have to access ourselves using in-line assembly.
 
 References
 

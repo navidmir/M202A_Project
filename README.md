@@ -1,5 +1,7 @@
 **Horizontal Power Comparison of Commonly Used Micro Controller Boards**
 
+Google Drive: <https://drive.google.com/drive/folders/1zpd2A9vdD_L1s2i-tXj2ZQ2Z_FPMoxEz>
+
 This project consists of two aspects:
 
 1) A custom-designed power measuring platform
@@ -61,7 +63,7 @@ The first two tests are written using code from online libraries [4, 5]. The res
 
 Except for the broadcast test, the tests are further modified to find execution timing of the code (using a Zephyr library). 100 runs of the code that is running in a loop for the power test are timed and printed to the serial port. 5 of these for a total of 500 runs are averaged together to find an execution time per run. For the BLE and Pico, additional configuration is needed to print to the serial port. The Zephyr applications are found in src/Zephyr. There are two flavors, one is src/Zephyr/power and one is src/Zephyr/timing/nano_pi and src/Zephyr/timing/esp.
 
-The measurement data can be found in our Google drive <https://drive.google.com/drive/folders/1zpd2A9vdD_L1s2i-tXj2ZQ2Z_FPMoxEz?usp=share_link>.
+The measurement data can be found in our Google drive.
 
 Building and Flashing
 

@@ -1,7 +1,7 @@
-**Horizontal Power Comparison of Commonly Used Micro Controller Boards**
+**Horizontal Power Comparison of Commonly Used Microcontroller Boards**
 
 Google Drive: <https://drive.google.com/drive/folders/1zpd2A9vdD_L1s2i-tXj2ZQ2Z_FPMoxEz>
-The demo video is found in the Google Drive under the Media directory. 
+The drive contains our demo video (under the Media directory) and presentation slides. 
 
 This project consists of two aspects:
 
